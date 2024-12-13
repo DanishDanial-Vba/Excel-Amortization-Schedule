@@ -16,7 +16,8 @@ The **Loan Amortization Schedule VBA Add-in** is an Excel add-in designed to sim
 - Supports early repayment and balloon payments.
 
 ## Installation
-1. Download the `.xlam` file for the add-in from [here](https://github.com/DanishDanial-Vba/Excel-Amortization-Schedule/blob/main/Finance%20Lease.xlam)).
+1. Download the `.xlam` file for the add-in from ([here](https://github.com/DanishDanial-Vba/Excel-Amortization-Schedule/raw/main/Finance%20Lease.xlam)
+).
 2. Open Excel and go to `File > Options > Add-ins`.
 3. At the bottom of the window, select `Excel Add-ins` in the "Manage" dropdown and click **Go**.
 4. Click **Browse** and select the downloaded `.xlam` file.
