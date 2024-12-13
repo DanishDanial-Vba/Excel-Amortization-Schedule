@@ -1,0 +1,43 @@
+name: Release Excel VBA Add-in
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: windows-latest  # Use Windows runner for Excel operations
+
+    steps:
+      # Step 1: Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Excel (this assumes Excel is installed on GitHub-hosted runners)
+      - name: Ensure Excel is installed
+        run: |
+          powershell -Command "Get-Command excel"
+
+      # Step 3: Package the Excel file as .xlsm
+      - name: Save as Excel Add-in (.xlsm)
+        run: |
+          echo "Saving Excel file as .xlsm"
+          # Example PowerShell to open Excel and save the file as .xlsm
+          powershell.exe -Command "& {Start-Process 'C:\Program Files (x86)\Microsoft Office\root\OfficeXX\EXCEL.EXE' -ArgumentList 'C:\path\to\your\workbook.xlsm /mSaveAsAddIn'}"
+          
+          # Replace with actual path to your .xlsm workbook and macro name that saves the file
+
+      # Step 4: Create a new release with the .xlsm file
+      - name: Create a new GitHub release
+        run: |
+          VERSION="v$(date +'%Y.%m.%d-%H.%M.%S')"  # This will create a unique version for each release based on the timestamp
+          echo "Version: $VERSION"
+          gh release create $VERSION C:\path\to\your\workbook.xlsm --title "$VERSION Release" --notes "Automated release for $VERSION"
+
+      # Optional: Clean up temporary files if needed
+      - name: Clean up
+        run: |
+          echo "Cleaning up after release"
+          # Remove temporary files if necessary
