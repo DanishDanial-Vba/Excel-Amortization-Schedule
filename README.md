@@ -1,7 +1,3 @@
-Here’s a sample `README.md` file for a **Loan Amortization Schedule VBA Add-in**:
-
----
-
 # Loan Amortization Schedule VBA Add-in
 
 ## Overview
