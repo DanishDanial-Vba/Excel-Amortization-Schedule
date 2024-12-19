@@ -5,8 +5,9 @@ Option Explicit
 ' Author: Danish Danial
 ' Purpose: Generate Finance Lease Summary for IFRS - SME Disclosure Requirement
 
-Sub GenerateLoanSummary(ws As Worksheet, pgrs As ProgressBar)
+Public Function GenerateLoanSummary(ws As Worksheet, pgrs As ProgressBar, YearEndMonth As Integer) As Boolean
     
+    GenerateLoanSummary = False
     Application.ScreenUpdating = False
     
     Dim firstYearEnd As Long
@@ -20,7 +21,7 @@ Sub GenerateLoanSummary(ws As Worksheet, pgrs As ProgressBar)
     Dim cell As Range
     Dim firstFebDate As Date
     Dim lastRow As Long
-
+    
     
     pgrs.Value = 82
     
@@ -31,7 +32,7 @@ Sub GenerateLoanSummary(ws As Worksheet, pgrs As ProgressBar)
     ' Loop through each cell in the search range to find the first February date
     For Each cell In searchRange
         If IsDate(cell.Value) Then
-            If month(cell.Value) = 2 Then ' Check if the month is February
+            If month(cell.Value) = YearEndMonth Then ' Check if the month is February
                 If Not found Or cell.Value < firstFebDate Then
                     firstFebDate = cell.Value
                     firstYearEnd = cell.row
@@ -44,7 +45,7 @@ Sub GenerateLoanSummary(ws As Worksheet, pgrs As ProgressBar)
     ' If no February date is found, exit the subroutine
     If Not found Then
         MsgBox "No February date found!"
-        Exit Sub
+        Exit Function
     End If
     
     ws.Cells(9, 13).Value = "Minimum lease payments which fall due:"
@@ -68,6 +69,8 @@ Sub GenerateLoanSummary(ws As Worksheet, pgrs As ProgressBar)
     ' Calculate the maximum number of years based on rows
     maxYears = WorksheetFunction.Ceiling((totalRows - firstYearEnd) / 12, 1)
     
+    
+    
     ' Loop through each year to generate the summary dynamically
     For yearIndex = 1 To maxYears
         pgrs.Value = 82 + (yearIndex / maxYears * 18)
@@ -79,7 +82,7 @@ Sub GenerateLoanSummary(ws As Worksheet, pgrs As ProgressBar)
         ' Add formulas and headers for the current year
         With ws
             ' Year header
-            .Cells(9, 13 + yearIndex).Value = "Year " & yearIndex
+            .Cells(9, 13 + yearIndex).Value = "" & Format(ws.Cells(yearStart - 1, 2).Value, "yyyy")
             
             ' Sum of column G (e.g., payments) for the year
             .Cells(10, 13 + yearIndex).formula = "=SUM(" & .Range(.Cells(yearStart, 7), .Cells(yearEnd, 7)).Address(False, False) & ")"
@@ -125,7 +128,10 @@ Sub GenerateLoanSummary(ws As Worksheet, pgrs As ProgressBar)
         End With
     Next yearIndex
     
+    
     ws.Columns.EntireColumn.AutoFit
+    FormatSchedule ws
+    GenerateLoanSummary = True
     Application.ScreenUpdating = True
-End Sub
+End Function
 
