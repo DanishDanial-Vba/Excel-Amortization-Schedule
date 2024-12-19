@@ -16,13 +16,18 @@ Attribute VB_Exposed = False
 Option Explicit
 
 ' Variables to hold input values
-Private tInstallment As Double
-Private tPrincipal As Double
-Private tInterest As Double
-Private tTenure As Double
-Private tBaloon As Double
-Private tStart As Date
-Private tInst_Start As Date
+Private tLoanOptions As New ClsLoanOptions
+Private tResult As Boolean
+
+
+'Private tInstallment As Double
+'Private tPrincipal As Double
+'Private tInterest As Double
+'Private tTenure As Double
+'Private tBaloon As Double
+'Private tStart As Date
+'Private tInst_Start As Date
+'Private tYearEnd As Integer
 
 Private Sub ValidateDateInput(ByVal TextBox As MSForms.TextBox, ByVal Label As MSForms.Label, ByVal defaultLabel As String)
     ' Check if the entered value is a valid date
@@ -43,7 +48,7 @@ Private Sub ValidateDateInput(ByVal TextBox As MSForms.TextBox, ByVal Label As M
     enteredDate = CDate(TextBox.Value)
 
     ' Check if the date is within the specified range
-    If enteredDate < CDate("1900/01/01") Or enteredDate > CDate("2100/12/31") Then
+    If enteredDate < CDate("01-01-1900") Or enteredDate > CDate("31-12-2100") Then
         ' Display error message on label
         Label.Caption = "Wrong Date"
         Label.Font.Bold = True
@@ -62,32 +67,82 @@ Private Sub ValidateDateInput(ByVal TextBox As MSForms.TextBox, ByVal Label As M
     End If
 End Sub
 
-Private Sub CommandButton_Schedule_Click()
-Dim DaysOption As Integer
-tStart = Format(TextBox_StartDate.Value, "YYYY/MM/DD")
-tInst_Start = Format(TextBox_FirstInstallment.Value, "YYYY/MM/DD")
+Private Sub ComboBox1_Change()
+    Dim monthID As Integer
+    Dim selectedMonth As String
+    
+    ' Get the selected month
+    selectedMonth = ComboBox1.Value
+    
+    ' Map the month name to its ID
+    monthID = Application.Match(selectedMonth, Array("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"), 0)
+    
+     tLoanOptions.YearEndMonth = monthID
+    ' Display the month ID
+'    MsgBox "Selected Month ID: " & monthID, vbInformation, "Month ID"
+End Sub
 
-If OptionButton3 = True Then
-    DaysOption = 1
-ElseIf OptionButton4 = True Then
-    DaysOption = 0
+
+
+
+Private Sub CommandButton_Schedule_Click()
+'On Error GoTo ErrorHandler
+Dim DaysOption As Integer
+tLoanOptions.StartDate = Format(TextBox_StartDate.Value, "dd-mm-yyyy")
+tLoanOptions.InstallmentStartDate = Format(TextBox_FirstInstallment.Value, "dd-mm-yyyy")
+
+If OptionButton_30422.Value Then
+    tLoanOptions.DaysOption = 1
+ElseIf OptionButton_Calender.Value Then
+    tLoanOptions.DaysOption = 0
 End If
 ProgressBar_1.Value = 9
 StatusBar_1.Enabled = True
 
-AmortizationSchedule tInterest, tTenure, tInstallment, tPrincipal, tBaloon, tStart, tInst_Start, DaysOption, ActiveWorkbook, ProgressBar_1
+tResult = AmortizationSchedule(tLoanOptions, ActiveWorkbook, ProgressBar_1)
 
+If tResult Then
 MsgBox "Amortization Schedule generated successfully!", vbInformation, "Success"
+Else
+MsgBox "Something went wrong!", vbCritical, "Failed"
+End If
+
+Exit Sub
+
+ErrorHandler:
+    MsgBox "Something went wrong!", vbCritical, "Failed"
 
 End Sub
 
 
-Private Sub TextBox_FirstInstallment_Change()
 
+Private Sub OptionButton_RoundInterestNo_Click()
+    tLoanOptions.InterestRounding = False
+End Sub
+
+Private Sub OptionButton_RoundInterestYes_Click()
+    tLoanOptions.InterestRounding = True
+End Sub
+
+Private Sub TextBox_FirstInstallment_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+Dim response As VbMsgBoxResult
+response = MsgBox("Do you want to edit the Installment start date?", vbYesNo, "Edit")
+If response = vbYes Then
+        ' Allow the TextBox to be edited
+        TextBox_FirstInstallment.Locked = False
+        TextBox_FirstInstallment.SetFocus
+    Else
+        ' Make the TextBox non-editable
+        TextBox_FirstInstallment.Locked = True
+    End If
 End Sub
 
 Private Sub TextBox_StartDate_Exit(ByVal Cancel As MSForms.ReturnBoolean)
-TextBox_FirstInstallment.Value = Format(DateAdd("m", 1, CDate(TextBox_StartDate.Value)), "DD/MM/YYYY")
+If IsDate(TextBox_StartDate.Value) Then
+TextBox_FirstInstallment.Value = Format(DateAdd("m", 1, CDate(TextBox_StartDate.Value)), "dd-mm-yyyy")
+Else
+Exit Sub
+End If
 End Sub
 
 'Private Sub TextBox_FirstInstallment_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
@@ -104,6 +159,14 @@ Private Sub TextBox_StartDate_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, By
 End Sub
 
 
+Private Sub TextBox_FirstInstallment_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+    ' Only check the entered value when the user presses the Tab or Enter key
+    If KeyCode = vbKeyTab Or KeyCode = vbKeyReturn Then
+        ValidateDateInput TextBox_FirstInstallment, Label_FirstInstallment, "Installment Start Date"
+    End If
+
+
+End Sub
 
 
 ' Initialize the form
@@ -116,11 +179,30 @@ Private Sub UserForm_Initialize()
         
     TextBox_Principal.SetFocus
     TextBox_Principal.SelStart = 0
-    TextBox_StartDate.Value = Format(Now(), "DD/MM/YYYY")
-    TextBox_FirstInstallment = Format(DateAdd("m", 1, Now()), "DD/MM/YYYY")
-    OptionButton3.Value = True
+    TextBox_StartDate.Value = Format(Now(), "dd-mm-yyyy")
+    TextBox_FirstInstallment = Format(DateAdd("m", 1, Now()), "dd-mm-yyyy")
+    OptionButton_30422.Value = True
+    OptionButton_RoundInterestNo.Value = True
     TextBox_Principal.SelLength = Len(TextBox_Principal.Value)
     
+        ' Populate the ComboBox with month names
+    With ComboBox1
+        .Clear
+        .AddItem "January"
+        .AddItem "February"
+        .AddItem "March"
+        .AddItem "April"
+        .AddItem "May"
+        .AddItem "June"
+        .AddItem "July"
+        .AddItem "August"
+        .AddItem "September"
+        .AddItem "October"
+        .AddItem "November"
+        .AddItem "December"
+    End With
+    
+    ComboBox1.Value = "February"
     
        ' Set up the Toolbar
 '    With Toolbar1.Buttons
@@ -161,16 +243,16 @@ Private Sub SetInstallmentMode(isInstallmentMode As Boolean)
 End Sub
 
 ' Handle OptionButton1 selection (Installment mode)
-Private Sub OptionButton1_Change()
-    If OptionButton1.Value Then
+Private Sub OptionButton_InformationChoiceInstallment_Change()
+    If OptionButton_InformationChoiceInstallment.Value Then
         SetInstallmentMode True
         ResetFields
     End If
 End Sub
 
 ' Handle OptionButton2 selection (Interest mode)
-Private Sub OptionButton2_Change()
-    If OptionButton2.Value Then
+Private Sub OptionButton_InformationChoiceInterest_Change()
+    If OptionButton_InformationChoiceInterest.Value Then
         SetInstallmentMode False
         ResetFields
     End If
@@ -201,7 +283,7 @@ Private Sub EnforceDateFormat(ByVal KeyAscii As MSForms.ReturnInteger, ByRef Tex
 End Sub
 
 Private Sub ValidateCompleteDate(ByRef TextBox As MSForms.TextBox)
-    Dim yearPart As Integer, monthPart As Integer, dayPart As Integer
+    Dim YearPart As Integer, MonthPart As Integer, DayPart As Integer
     Dim invalidPartStart As Integer, invalidPartLength As Integer
 
     ' Check if the format is correct
@@ -215,21 +297,21 @@ Private Sub ValidateCompleteDate(ByRef TextBox As MSForms.TextBox)
 
     ' Split the input into year, month, and day
     On Error Resume Next
-    yearPart = CInt(Mid(TextBox.Text, 1, 4))
-    monthPart = CInt(Mid(TextBox.Text, 6, 2))
-    dayPart = CInt(Mid(TextBox.Text, 9, 2))
+    YearPart = CInt(Mid(TextBox.Text, 1, 4))
+    MonthPart = CInt(Mid(TextBox.Text, 6, 2))
+    DayPart = CInt(Mid(TextBox.Text, 9, 2))
     On Error GoTo 0
 
     ' Validate ranges
-    If yearPart < 1900 Or yearPart > 2100 Then
+    If YearPart < 1900 Or YearPart > 2100 Then
         MsgBox "Year must be between 1900 and 2100.", vbExclamation, "Invalid Year"
         invalidPartStart = 0
         invalidPartLength = 4
-    ElseIf monthPart < 1 Or monthPart > 12 Then
+    ElseIf MonthPart < 1 Or MonthPart > 12 Then
         MsgBox "Month must be between 01 and 12.", vbExclamation, "Invalid Month"
         invalidPartStart = 5
         invalidPartLength = 2
-    ElseIf dayPart < 1 Or dayPart > 31 Then
+    ElseIf DayPart < 1 Or DayPart > 31 Then
         MsgBox "Day must be between 01 and 31.", vbExclamation, "Invalid Day"
         invalidPartStart = 8
         invalidPartLength = 2
@@ -270,9 +352,15 @@ Private Sub TextBox_Installment_Exit(ByVal Cancel As MSForms.ReturnBoolean)
 CommandButton_Process_Click
 End Sub
 
+
 Private Sub TextBox_Interest_KeyPress(ByVal KeyAscii As MSForms.ReturnInteger)
     RestrictToNumericInput KeyAscii, TextBox_Interest
 End Sub
+
+Private Sub TextBox_Interest_Exit(ByVal Cancel As MSForms.ReturnBoolean)
+CommandButton_Process_Click
+End Sub
+
 
 Private Sub TextBox_Tenure_KeyPress(ByVal KeyAscii As MSForms.ReturnInteger)
     If KeyAscii < 48 Or KeyAscii > 57 Then If KeyAscii <> 8 Then KeyAscii = 0
@@ -289,33 +377,33 @@ Private Sub CommandButton_Process_Click()
     
     
     ' Gather input values
-    tPrincipal = Val(TextBox_Principal.Value)
-    tTenure = Val(TextBox_Tenure.Value)
-    tBaloon = Val(TextBox_Residual.Value)
+    tLoanOptions.Principal = Val(TextBox_Principal.Value)
+    tLoanOptions.Tenure = Val(TextBox_Tenure.Value)
+    tLoanOptions.Balloon = Val(TextBox_Residual.Value)
     
 
     
-    If OptionButton1.Value Then
+    If OptionButton_InformationChoiceInstallment.Value Then
         ' Calculate Interest
-        tInstallment = Val(TextBox_Installment.Value)
+        tLoanOptions.Installment = Val(TextBox_Installment.Value)
         
 
         
-        tInterest = Get_Interest(tTenure, tInstallment, tPrincipal, tBaloon)
-        TextBox_Result.Value = Format(tInterest, "0.000" & "%")
+        tLoanOptions.Interest = Get_Interest(tLoanOptions.Tenure, tLoanOptions.Installment, tLoanOptions.Principal, tLoanOptions.Balloon)
+        TextBox_Result.Value = Format(tLoanOptions.Interest, "0.000" & "%")
         Label_Result.Caption = "Interest Rate"
         
-        Application.StatusBar = "Interest Rate: " & Format(tInterest, "0.000" & "%")
+        'Application.StatusBar = "Interest Rate: " & Format(tLoanOptions.Interest, "0.000" & "%")
 
     
-    ElseIf OptionButton2.Value Then
+    ElseIf OptionButton_InformationChoiceInterest.Value Then
         ' Calculate Installment
-        tInterest = Val(TextBox_Interest.Value) / 100
+        tLoanOptions.Interest = Val(TextBox_Interest.Value) / 100
         
 
         
-        tInstallment = Get_Installment(tInterest, tTenure, tPrincipal, tBaloon)
-        TextBox_Result.Value = Format(tInstallment, "0.00")
+        tLoanOptions.Installment = Get_Installment(tLoanOptions.Interest, tLoanOptions.Tenure, tLoanOptions.Principal, tLoanOptions.Balloon)
+        TextBox_Result.Value = Format(tLoanOptions.Installment, "0.00")
         Label_Result.Caption = "Installment"
         
 
